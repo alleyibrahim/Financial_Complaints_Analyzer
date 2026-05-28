@@ -43,7 +43,7 @@ python -m ipykernel install --user --name=fca-venv --display-name "Python (FCA v
 
 - **BERTopic** with `all-MiniLM-L6-v2` embeddings, UMAP → HDBSCAN clustering, bigram/trigram c-TF-IDF for keyword extraction. Post-hoc outlier reduction reassigns the HDBSCAN noise group so every document carries a topic label. 25 topics in the final taxonomy.
 - **Hybrid feature set** for Logistic Regression — TF-IDF (full text) + sentence embeddings (full text) + product/channel metadata one-hots. Outperformed DistilBERT-LoRA by ~11 macro-F1 points on this dataset (**0.79 vs 0.71**); shipped as the production classifier.
-- **LangGraph agent** is a state machine with regex-first urgency rules (zero LLM tokens on legal / fraud / bankruptcy / FCRA mentions), Gemini 2.5 Flash Lite for the MEDIUM / LOW grey zone, and three independent HITL triggers (confidence < 0.60, urgency = HIGH, no similar precedents found).
+- **LangGraph agent** is a state machine with regex-first urgency rules (zero LLM tokens on legal / fraud / bankruptcy / FCRA mentions), Gemini 3.1 Flash Lite for the MEDIUM / LOW grey zone, and three independent HITL triggers (confidence < 0.60, urgency = HIGH, no similar precedents found).
 - **Vector DB** indexes Task 1's train + val splits; the demo set is Task 1's test split, held out from both the classifier and ChromaDB.
 
 ---
