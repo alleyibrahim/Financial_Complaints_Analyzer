@@ -1,0 +1,35 @@
+# Python
+.venv/
+__pycache__/
+*.pyc
+*.pyo
+
+# Environment
+.env
+.env.local
+.env.*.local
+
+# Editor
+.vscode/
+.idea/
+
+# Jupyter
+.ipynb_checkpoints/
+
+# Backup / temp
+*.bak
+*.tmp
+*.swp
+*~
+
+# Large rebuildable artefacts
+outputs/chroma_db/
+outputs/lora_checkpoints/
+outputs/complaints_labelled.parquet
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Claude assistant state
+.claude/
