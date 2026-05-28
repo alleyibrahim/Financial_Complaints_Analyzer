@@ -1,65 +1,64 @@
 # Financial Complaints Analyzer
 
-End-to-end pipeline that turns a financial-institution complaint dataset into a topic taxonomy, a topic classifier, and an agentic triage system for an operations team.
+End-to-end pipeline that turns a consumer-financial-complaint dataset into a topic taxonomy, a topic classifier, and an agentic triage system for an operations team.
 
 Built for the **CocaColaHBC AI Developer Technical Assessment**.
 
 ---
 
-## Two notebooks
+## Notebooks
 
 | Notebook | What it does |
 |---|---|
-| [`complaint_analysis.ipynb`](complaint_analysis.ipynb) | **Task 1** — EDA → preprocessing → sentence embeddings → BERTopic + manual taxonomy → Logistic Regression and DistilBERT-LoRA classifiers → model comparison. |
-| [`complaint_agent.ipynb`](complaint_agent.ipynb) | **Task 2** — ChromaDB vector store → LangGraph agent with regex-first urgency rules + Gemini fallback → demo on held-out complaints → daily-briefing batch function. |
+| [`complaint_analysis.ipynb`](complaint_analysis.ipynb) | **Task 1** — EDA, preprocessing, sentence embeddings, BERTopic taxonomy (25 topics), Logistic Regression and DistilBERT-LoRA classifiers, side-by-side comparison. |
+| [`complaint_agent.ipynb`](complaint_agent.ipynb) | **Task 2** — ChromaDB vector store, LangGraph agent (classify → urgency → retrieve → draft → review-gate), demo on held-out complaints, daily-briefing batch function. |
 
-Task 2 consumes artefacts produced by Task 1 (`outputs/df_clf.parquet`, `outputs/embeddings.npy`, the saved classifier, etc.). Run Task 1 first.
+Task 2 reads artefacts produced by Task 1 (`outputs/df_clf.parquet`, `outputs/embeddings.npy`, classifier pkls, optional LoRA adapter). Run Task 1 first.
 
 ---
 
 ## Setup
 
 ```powershell
-# 1. Create + activate the project venv (Python 3.10+)
 python -m venv .venv
 .\.venv\Scripts\Activate.ps1
-
-# 2. Core dependencies
 pip install -r requirements.txt
 
-# 3. PyTorch with CUDA 11.8 (LoRA training; CPU works for inference only)
+# CUDA build of PyTorch (RTX 2060 / any modern NVIDIA GPU)
 pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu118
 
-# 4. Set GOOGLE_API_KEY (or GEMINI_API_KEY) in .env  — get a free key at
-#    https://aistudio.google.com/app/apikey
+# Copy .env.example to .env and add a free Gemini API key
+# https://aistudio.google.com/app/apikey
 ```
 
-Optional — register the venv as a Jupyter kernel for VS Code:
+In VS Code, register the venv as a kernel and pick it for both notebooks:
 
 ```powershell
 python -m ipykernel install --user --name=fca-venv --display-name "Python (FCA venv)"
 ```
 
-Pick the **Python (FCA venv)** kernel when you open each notebook.
-
----
-
-## Data
-
-`complaints_flat.csv` (78,313 rows × 18 columns) — CFPB consumer complaint extract, Chase-heavy. ~27 % of rows have a narrative; all modelling runs on that subset (20,998 docs after preprocessing).
-
 ---
 
 ## Key design choices
 
-- **BERTopic** with `all-MiniLM-L6-v2` embeddings, UMAP→HDBSCAN clustering, bigram/trigram c-TF-IDF for keyword extraction. 25 topics after `min_cluster_size=100`, `min_samples=3`, and post-hoc outlier reduction.
-- **Hybrid feature set** for Logistic Regression (TF-IDF + sentence embeddings + product/channel metadata). Outperformed DistilBERT-LoRA by ~11 macro-F1 points on this dataset (0.79 vs 0.71); ships as the production classifier.
-- **Agent** is a LangGraph state machine: classify → assess urgency → retrieve similar past complaints → draft case note → review gate. Regex urgency rules fire first (zero LLM tokens for the obvious HIGH cases); Gemini 2.5 Flash Lite handles the MEDIUM/LOW grey zone.
-- **HITL routing** triggers on confidence < 0.60, urgency = HIGH, or no similar precedents found.
-- **Vector DB** indexes Task 1's train + val splits; the demo set is Task 1's test split (held out from both classifier *and* ChromaDB).
+- **BERTopic** with `all-MiniLM-L6-v2` embeddings, UMAP → HDBSCAN clustering, bigram/trigram c-TF-IDF for keyword extraction. Post-hoc outlier reduction reassigns the HDBSCAN noise group so every document carries a topic label. 25 topics in the final taxonomy.
+- **Hybrid feature set** for Logistic Regression — TF-IDF (full text) + sentence embeddings (full text) + product/channel metadata one-hots. Outperformed DistilBERT-LoRA by ~11 macro-F1 points on this dataset (**0.79 vs 0.71**); shipped as the production classifier.
+- **LangGraph agent** is a state machine with regex-first urgency rules (zero LLM tokens on legal / fraud / bankruptcy / FCRA mentions), Gemini 2.5 Flash Lite for the MEDIUM / LOW grey zone, and three independent HITL triggers (confidence < 0.60, urgency = HIGH, no similar precedents found).
+- **Vector DB** indexes Task 1's train + val splits; the demo set is Task 1's test split, held out from both the classifier and ChromaDB.
+
+---
+
+## Results
+
+| Model | Macro F1 | Accuracy | HITL rate |
+|---|---:|---:|---:|
+| Logistic Regression (production) | **0.79** | 0.80 | 40 % |
+| DistilBERT + LoRA | 0.71 | 0.72 | 25 % |
+
+LogReg's higher HITL rate is the desired failure mode — when the classifier is unsure, the agent routes to a human.
 
 ---
 
 ## Outputs directory
 
-`outputs/` holds embeddings, models, ChromaDB index, demo complaints, plots. Large rebuildable artefacts (`chroma_db/`, `lora_checkpoints/`) are gitignored — they regenerate when the relevant cells run.
+`outputs/` holds embeddings, the BERTopic model, classifier pickles, the LoRA adapter, ChromaDB index, and EDA plots. Large rebuildable artefacts (`chroma_db/`, `lora_checkpoints/`) are gitignored — they regenerate when their cells run.
