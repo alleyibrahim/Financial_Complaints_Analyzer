@@ -1,0 +1,37 @@
+# Python
+.venv/
+__pycache__/
+*.pyc
+*.pyo
+
+# Environment
+.env
+.env.local
+.env.*.local
+
+# Editor
+.vscode/
+.idea/
+
+# Jupyter
+.ipynb_checkpoints/
+
+# Backup / temp
+*.bak
+*.tmp
+*.swp
+*~
+
+# Full dataset — download it yourself, see the "Data" section of the README
+data/complaints_flat.csv
+
+# Large rebuildable artefacts — Part 1 regenerates these
+outputs/chroma_db/
+outputs/lora_checkpoints/
+outputs/complaints_labelled.parquet
+outputs/df_clf.parquet
+outputs/embeddings.npy
+
+# OS
+.DS_Store
+Thumbs.db
